@@ -29,7 +29,7 @@
 ---
 
 ## Overview
-802.11mc Fine Timing Measurement (FTM) lets Wi-Fi devices estimate distance by exchanging timestamped frames.  
+802.11mc and 802.11az Fine Timing Measurement (FTM) lets Wi-Fi devices estimate distance by exchanging timestamped frames.  
 While 802.11az strengthens this with Protected FTM (PASN + Secure-LTF + Sequence Authentication Code), many commercial stacks silently fall back to legacy, unprotected FTM—leaving room for manipulation.
 
 This repository collects **proof-of-concept code, pcap traces, and analysis notebooks** for eight attack primitives that bias or fully spoof FTM ranging on off-the-shelf hardware.
@@ -43,35 +43,27 @@ This repository collects **proof-of-concept code, pcap traces, and analysis note
 ### Spoofing FTM Responses
 A rogue device advertises itself as an FTM responder, then forges the timestamp pairs (`t₁/t₄`) or optional LCI/LCR fields in every FTM-Response it emits. Because pre-az frames carry **no MIC**, any station that starts ranging accepts the bogus data and derives an attacker-chosen distance or absolute position.  
 *Practical demo:* monitor/inject capable NICs achieve **metre-level bias** without breaking association security.  
-[[aanjhan.com](https://aanjhan.com)]
 
 ### Replaying FTM Sessions & Responses
 An eavesdropper records a full ranging burst (request → multiple responses) at **location A** and later replays it verbatim at **location B**. Legacy FTM lacks freshness, so the initiator re-uses stale timestamps and still believes it is at A. Replaying just one captured response inside a live burst is enough to corrupt multilateration engines.  
-[[aanjhan.com](https://aanjhan.com)]
 
 ### Replaying PHY-Modified FTM Responses
 Following Schepers *et al.*: replay a previously captured response but **narrow the channel** (e.g., 80 MHz → 20 MHz). The longer OFDM symbol stretches the perceived flight-time, adding **tens of metres** to the computed range—all with one frame.  
-[[winlab.rutgers.edu](https://winlab.rutgers.edu)]
 
 ### In-Session Injection
 During an ongoing burst the adversary spoofs the responder’s MAC and injects a crafted response **before** the legitimate one arrives. Most chipsets accept the **first** frame matching the current 1-byte dialog token; the forged timestamps are processed while the genuine frame is discarded as a duplicate. No jamming required.  
-[[petsymposium.org](https://petsymposium.org)] [[northeastern.edu](https://repository.library.northeastern.edu)]
 
 ### Configuration Side-Channels & Bias Attacks
 Initiators and responders leak static features—fixed burst-size, dialog-token patterns, missing MAC randomisation—enabling long-term device tracking. Malformed FTM frames further reveal firmware versions.  
-[[researchgate.net](https://researchgate.net)] [[pmc.ncbi.nlm.nih.gov](https://pmc.ncbi.nlm.nih.gov)]
 
 ### Bandwidth-Mismatch Offsets
 If two legitimate devices silently fall back from 40/80 MHz to 20 MHz while the peer still assumes the original width, the reported RTT shifts by **≈ 6–8 m**. An active adversary can induce the mismatch via selective jamming, biasing distance *without* spoofing any frame.  
-[[winlab.rutgers.edu](https://winlab.rutgers.edu)] [[sciencedirect.com](https://sciencedirect.com)]
 
 ### Channel-Swap MITM Attacks
 Early 802.11az drafts omitted the **Operating-Class Information (OCI)** element from the PASN handshake. A man-in-the-middle relays authentication on channel 1, then silently moves one party to channel 6 for the ranging exchange. The two sides measure ToF on different frequencies; the distance passes integrity checks yet is meaningless. (Fixed by Comment LB-253.)  
-[[mentor.ieee.org PDF](https://mentor.ieee.org)]
 
 ### Forced Downgrade to Unencrypted FTM
 802.11az keeps backward compatibility: if either side advertises only legacy FTM, most stacks quietly downgrade. Attackers jam or corrupt PASN until the estimator retries without security, **re-opening all spoofing and replay avenues**. Advisories label this a live threat on Wi-Fi 7 phones and mesh APs.  
-[[thehackernews.com](https://thehackernews.com)] [[usenix.org](https://usenix.org)] [[netally.com](https://cyberscope.netally.com)]
 
 ---
 
